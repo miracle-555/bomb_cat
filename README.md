@@ -184,254 +184,298 @@
                      for c in gs.cards_hand
                  ]
          ```
-- 1. main_menu类
-
-成员变量：
-
-elements：界面元素字典（如标题、按钮文本及位置）
-
-button_hitboxes：按钮点击区域（键为按钮类型，值为Pygame.Rect对象）
-
-music_on：背景音乐开关状态
-
-方法：
-
-Create_text(text,font_type)：生成文本表面和矩形区域（居中定位）
-
-draw_element(element)：渲染界面元素（自动处理悬停高亮）
-
-run(self)：主循环：处理事件（点击/音乐切换）并返回游戏开始标志
-
-- 1. monster类
-
-成员变量：
-
-Name：怪物名称（如“清道夫”“死灵髅楼”）
-
-Cards：怪物专属卡牌池
-
-Strategy：怪物行为策略描述
-
-1. 开发环境和关键代码
-
-**1.开发环境**
-
-- Python 3.11.4 + Pygame 2.5
-- 第三方库：random（随机抽牌）、sys（退出处理）
-
-**2.关键代码**
-
-1.游戏初始化与主菜单
-
-def init_settings():
-
-pygame.init()
-
-pygame.mixer.init()
-
-WIDTH, HEIGHT = 1792 // 2, 1024 // 2 # 设置窗口分辨率
-
-screen = pygame.display.set_mode((WIDTH, HEIGHT))
-
-pygame.display.set_caption("炸弹猫")
-
-return screen, WIDTH, HEIGHT
-
-class Main_Menu:
-
-def \__init_\_(self, screen, WIDTH, HEIGHT):
-
-self.screen = screen
-
-self.elements = {
-
-'title': self.create_text("炸弹猫", 'title', (WIDTH // 2, HEIGHT // 4)),
-
-'start_btn': self.create_text("开始游戏", 'button', (WIDTH // 2, HEIGHT // 2)),
-
-'quit_btn': self.create_text("退出游戏", 'button', (WIDTH // 2, HEIGHT // 2 + HEIGHT//6))
-
-}
-
-self.button_hitboxes = { # 按钮点击区域
-
-'start': self.elements\['start_btn'\]\[1\].inflate(40, 20),
-
-'quit': self.elements\['quit_btn'\]\[1\].inflate(40, 20)
-
-}
-
-**功能说明：**
-
-init_settings() 初始化 Pygame 窗口、音频和分辨率。
-
-Main_Menu 类负责绘制主菜单界面，包括标题、开始按钮和退出按钮，并处理鼠标点击事件。
-
-2\. 战斗逻辑与愤怒值管理
-
-class Game_State:
-
-def \__init_\_(self):
-
-self.score_anger = random.randint(30, 80) # 初始愤怒值
-
-self.players_alive = {0: "玩家"} # 存活单位（玩家 + 怪物）
-
-self.cards_hand = \[\] # 玩家手牌
-
-self.flag = 0 # 0: 进行中, 1: 胜利, -1: 失败
-
-def check_anger(self, current_player):
-
-if self.score_anger >= 100:
-
-if current_player == 0: # 玩家导致愤怒值爆炸，游戏失败
-
-self.flag = -1
-
-else: # 怪物导致愤怒值爆炸，怪物被淘汰
-
-del self.players_alive\[current_player\]
-
-self.score_anger = max(199 - self.score_anger, 0) # 愤怒值重置
-
-if len(self.players_alive) == 1: # 仅剩玩家，胜利
-
-self.flag = 1
-
-**功能说明：**
-
-Game_State 类管理游戏状态，包括愤怒值、存活单位、手牌等。
-
-check_anger() 检测愤怒值是否超过 100，并处理胜利或失败逻辑。
-
-3\. 卡牌系统与功能牌效果
-
-class Prop:
-
-def \__init_\_(self, name, serial_number, function):
-
-self.name = name
-
-self.number = serial_number
-
-self.function = function
-
-def card_func(self, player, score_anger, cards_hand, choose=0):
-
-if self.name == "寒冰":
-
-score_anger -= 10 # 愤怒值 -10
-
-elif self.name == "炽热":
-
-if player == 0: # 玩家使用
-
-for i, card in enumerate(cards_hand):
-
-if isinstance(card, int):
-
-cards_hand\[i\] += 2 # 所有数字牌 +2
-
-else: # 怪物使用
-
-for i, card in enumerate(cards_monsters_hand\[choose - 1\]):
-
-if isinstance(card, int):
-
-cards_monsters_hand\[choose - 1\]\[i\] += 2
-
-return score_anger, cards_hand
-
-**功能说明：**
-
-Prop 类定义卡牌属性（名称、编号、功能描述）。
-
-card_func() 实现卡牌效果，如“寒冰”降低愤怒值，“炽热”增强数字牌。
-
-4\. 怪物回合逻辑
-
-def play_card(self, pid, monster_card):
-
-monster = self.players_alive\[pid\]
-
-hand = self.cards_monsters_hand\[pid - 1\]
-
-if monster.name == "清道夫":
-
-hand\[random.randint(0, 3)\] = 0 # 随机一张牌变 0
-
-if isinstance(monster_card, int): # 数字牌
-
-self.score_anger += monster_card
-
-else: # 功能牌
-
-card_obj = prop.dict_props\[monster_card\]
-
-card_obj.card_func(pid, self.score_anger, hand)
-
-**功能说明：**
-
-怪物根据自身策略选择卡牌（如“清道夫”会随机将一张牌变为 0）。
-
-数字牌直接增加愤怒值，功能牌触发对应效果。
-
-5.游戏主循环
-
-def game_loop(round_num=1):
-
-clock = pygame.time.Clock()
-
-is_player_turn = True
-
-while True:
-
-for event in pygame.event.get():
-
-if event.type == pygame.QUIT:
-
-pygame.quit()
-
-sys.exit()
-
-if is_player_turn: # 玩家回合
-
-if event.type == pygame.MOUSEBUTTONDOWN:
-
-selected = handle_card_selection()
-
-if selected:
-
-play_card(0, selected)
-
-is_player_turn = False # 切换到怪物回合
-
-else: # 怪物回合
-
-for pid in list(gs.players_alive.keys()):
-
-if pid != 0: # 跳过玩家
-
-monster_card = choose_monster_card(pid)
-
-play_card(pid, monster_card)
-
-is_player_turn = True # 切换回玩家回合
-
-draw_interface()
-
-clock.tick(60) # 60 FPS
-
-**功能说明：**
-
-主循环控制玩家和怪物的回合交替。
-
-玩家通过鼠标选择卡牌，怪物自动出牌。
-
-每帧刷新界面，保持流畅体验。
-
-5.运行方法和效果
+   3. main_menu类
+
+      - 成员变量：
+   
+            elements：界面元素字典（如标题、按钮文本及位置）
+   
+            button_hitboxes：按钮点击区域（键为按钮类型，值为Pygame.Rect对象）
+   
+            music_on：背景音乐开关状态
+
+      - 方法：
+
+            Create_text(text,font_type)：生成文本表面和矩形区域（居中定位）
+   
+            draw_element(element)：渲染界面元素（自动处理悬停高亮）
+   
+            run(self)：主循环：处理事件（点击/音乐切换）并返回游戏开始标志
+
+   4. monster类
+
+      - 成员变量：
+
+            Name：怪物名称（如“清道夫”“死灵髅楼”）
+
+            Cards：怪物专属卡牌池
+            
+            Strategy：怪物行为策略描述
+
+## 四、 开发环境和关键代码
+
+- 开发环境
+
+   - Python 3.11.4 + Pygame 2.5
+   - 第三方库：random（随机抽牌）、sys（退出处理）
+
+- 关键代码
+
+  #### 1. 游戏初始化与主菜单
+         
+   ```python
+   def init_settings():
+       """
+       初始化游戏设置
+       - 初始化Pygame和音频模块
+       - 设置游戏窗口分辨率
+       - 创建游戏窗口并设置标题
+       """
+       pygame.init()
+       pygame.mixer.init()
+       WIDTH, HEIGHT = 1792 // 2, 1024 // 2  # 设置窗口分辨率
+       screen = pygame.display.set_mode((WIDTH, HEIGHT))
+       pygame.display.set_caption("炸弹猫")
+       return screen, WIDTH, HEIGHT
+   
+   class Main_Menu:
+       def __init__(self, screen, WIDTH, HEIGHT):
+           """
+           主菜单类构造函数
+           :param screen: 游戏窗口表面
+           :param WIDTH: 窗口宽度
+           :param HEIGHT: 窗口高度
+           """
+           self.screen = screen
+           # 创建菜单UI元素
+           self.elements = {
+               'title': self.create_text("炸弹猫", 'title', (WIDTH // 2, HEIGHT // 4)),
+               'start_btn': self.create_text("开始游戏", 'button', (WIDTH // 2, HEIGHT // 2)),
+               'quit_btn': self.create_text("退出游戏", 'button', (WIDTH // 2, HEIGHT // 2 + HEIGHT//6))
+           }
+           # 定义按钮点击区域（带扩展边距）
+           self.button_hitboxes = {
+               'start': self.elements['start_btn'][1].inflate(40, 20),
+               'quit': self.elements['quit_btn'][1].inflate(40, 20)
+           }
+   ```
+         
+   ===== 功能说明 =====
+   - init_settings() 功能:
+      - 初始化 Pygame 窗口、音频和分辨率
+      - 创建游戏窗口并设置标题
+      - 返回窗口对象和分辨率参数
+   
+   - Main_Menu 类功能:
+      - 绘制主菜单界面（标题/开始按钮/退出按钮）
+      - 管理菜单UI元素和位置
+      - 处理按钮点击区域检测
+      - 响应鼠标点击事件
+
+   #### 2. 战斗逻辑与愤怒值管理
+
+   ```python
+   class Game_State:
+       def __init__(self):
+           """
+           游戏状态初始化
+           - 随机生成初始愤怒值(30-80)
+           - 初始化存活单位(玩家+怪物)
+           - 初始化玩家手牌
+           - 设置游戏状态标志
+           """
+           self.score_anger = random.randint(30, 80)  # 初始愤怒值
+           self.players_alive = {0: "玩家"}  # 存活单位（玩家 + 怪物）
+           self.cards_hand = []  # 玩家手牌
+           self.flag = 0  # 0: 进行中, 1: 胜利, -1: 失败
+   
+       def check_anger(self, current_player):
+           """
+           愤怒值检测与游戏状态更新
+           :param current_player: 当前行动玩家
+           - 愤怒值≥100时触发爆炸
+           - 玩家导致爆炸: 游戏失败
+           - 怪物导致爆炸: 淘汰怪物并重置愤怒值
+           - 仅剩玩家时: 游戏胜利
+           """
+           if self.score_anger >= 100:
+               if current_player == 0:  # 玩家导致愤怒值爆炸，游戏失败
+                   self.flag = -1
+               else:  # 怪物导致愤怒值爆炸，怪物被淘汰
+                   del self.players_alive[current_player]
+                   self.score_anger = max(199 - self.score_anger, 0)  # 愤怒值重置
+                   
+                   if len(self.players_alive) == 1:  # 仅剩玩家，胜利
+                       self.flag = 1
+   ```
+   
+   ===== 功能说明 =====
+   - Game_State 类管理核心游戏状态：
+     - score_anger: 当前愤怒值(0-100)
+     - players_alive: 存活单位字典(ID:名称)
+     - cards_hand: 玩家当前手牌列表
+     - flag: 游戏状态标志(0=进行中, 1=胜利, -1=失败)
+     
+   - check_anger() 方法：
+     - 当愤怒值达到100时触发爆炸检测
+     - 玩家导致爆炸 → 游戏失败( flag=-1 )
+     - 怪物导致爆炸 → 淘汰该怪物并重置愤怒值(199-当前值)
+     - 仅剩玩家存活 → 游戏胜利( flag=1 )
+
+   #### 3. 卡牌系统与功能牌效果
+      
+   ```python
+   class Prop:
+       def __init__(self, name, serial_number, function):
+           """
+           道具卡牌类
+           :param name: 卡牌名称
+           :param serial_number: 卡牌序列号
+           :param function: 功能描述
+           """
+           self.name = name
+           self.number = serial_number
+           self.function = function
+   
+       def card_func(self, player, score_anger, cards_hand, choose=0):
+           """
+           执行卡牌效果
+           :param player: 当前玩家(0=人类玩家)
+           :param score_anger: 当前愤怒值
+           :param cards_hand: 玩家手牌列表
+           :param choose: 选择目标(用于怪物操作)
+           :return: 更新后的愤怒值和手牌
+           """
+           if self.name == "寒冰":
+               # 寒冰效果：降低愤怒值10点
+               score_anger -= 10
+           elif self.name == "炽热":
+               if player == 0:  # 玩家使用炽热
+                   # 增强玩家所有数字牌(数值+2)
+                   for i, card in enumerate(cards_hand):
+                       if isinstance(card, int):
+                           cards_hand[i] += 2
+               else:  # 怪物使用炽热
+                   # 增强指定怪物手牌
+                   for i, card in enumerate(cards_monsters_hand[choose - 1]):
+                       if isinstance(card, int):
+                           cards_monsters_hand[choose - 1][i] += 2
+           
+           return score_anger, cards_hand
+   ```
+      
+   ===== 功能说明 =====
+   - Prop 类定义卡牌基础属性：
+     - name: 卡牌名称("寒冰"/"炽热")
+     - number: 唯一序列号
+     - function: 功能描述文本
+   
+   - card_func() 方法实现卡牌效果：
+     - 寒冰卡：直接降低10点愤怒值
+     - 炽热卡：
+       - 玩家使用 → 增强手牌中所有数字牌(数值+2)
+       - 怪物使用 → 增强指定怪物的手牌
+     - 返回更新后的愤怒值和手牌状态
+
+   #### 4. 怪物回合逻辑
+
+   ```python
+   def play_card(self, pid, monster_card):
+       """
+       怪物出牌逻辑
+       :param pid: 怪物ID(非0)
+       :param monster_card: 怪物选择的卡牌
+       - 执行怪物特殊能力(如清道夫)
+       - 数字牌直接增加愤怒值
+       - 功能牌触发对应效果
+       """
+       monster = self.players_alive[pid]  # 获取怪物对象
+       hand = self.cards_monsters_hand[pid - 1]  # 获取怪物手牌
+       
+       # 清道夫特殊能力：随机一张牌变0
+       if monster.name == "清道夫":
+           hand[random.randint(0, 3)] = 0
+       
+       # 数字牌：直接增加愤怒值
+       if isinstance(monster_card, int):
+           self.score_anger += monster_card
+       
+       # 功能牌：触发卡牌效果
+       else:
+           card_obj = prop.dict_props[monster_card]  # 获取卡牌对象
+           card_obj.card_func(pid, self.score_anger, hand)
+   ```
+      
+   ===== 功能说明 =====
+   - 该方法实现怪物出牌逻辑：
+     1. **特殊能力处理**：
+        - "清道夫"怪物会随机将一张手牌变为0
+     2. **数字牌处理**：
+        - 直接增加当前愤怒值（增加量=卡牌数值）
+     3. **功能牌处理**：
+        - 通过全局字典`prop.dict_props`获取卡牌对象
+        - 调用卡牌的`card_func()`方法执行效果
+        - 自动更新愤怒值和手牌状态
+
+   #### 5.游戏主循环
+
+   ```python
+   def game_loop(round_num=1):
+       """
+       游戏主循环
+       :param round_num: 当前回合数(默认从1开始)
+       - 管理玩家与怪物的回合交替
+       - 处理用户输入(鼠标点击)
+       - 控制游戏帧率(60FPS)
+       """
+       clock = pygame.time.Clock()
+       is_player_turn = True  # 回合标志(True=玩家回合)
+       
+       while True:  # 主游戏循环
+           # 事件处理
+           for event in pygame.event.get():
+               if event.type == pygame.QUIT:  # 退出事件
+                   pygame.quit()
+                   sys.exit()
+               
+               if is_player_turn:  # 玩家回合处理
+                   if event.type == pygame.MOUSEBUTTONDOWN:  # 鼠标点击
+                       selected = handle_card_selection()  # 处理卡牌选择
+                       if selected:
+                           play_card(0, selected)  # 玩家出牌
+                           is_player_turn = False  # 切换到怪物回合
+           
+           else:  # 怪物回合处理
+               # 遍历所有存活怪物(排除玩家ID=0)
+               for pid in list(gs.players_alive.keys()):
+                   if pid != 0:
+                       monster_card = choose_monster_card(pid)  # 怪物选择卡牌
+                       play_card(pid, monster_card)  # 怪物出牌
+               is_player_turn = True  # 切换回玩家回合
+           
+           draw_interface()  # 绘制游戏界面
+           clock.tick(60)  # 控制帧率为60FPS
+   ```
+      
+   ===== 功能说明 =====
+   - 游戏主循环实现回合制流程：
+     1. **玩家回合**：
+        - 监听鼠标点击事件
+        - 通过`handle_card_selection()`处理卡牌选择
+        - 使用`play_card()`执行玩家出牌
+        - 完成后切换到怪物回合
+   
+     2. **怪物回合**：
+        - 遍历所有存活怪物
+        - 通过`choose_monster_card()`获取怪物出牌策略
+        - 使用`play_card()`执行怪物出牌
+        - 完成后切换回玩家回合
+   
+     3. **界面刷新**：
+        - 每帧调用`draw_interface()`更新界面
+        - 通过`clock.tick(60)`保持60FPS流畅体验
+
+## 五、 运行方法和效果
 
 **1.操作指南**
 
