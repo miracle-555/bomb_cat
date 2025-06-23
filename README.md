@@ -491,7 +491,8 @@
 
 ### 2.效果截图
 
-	- 初始界面：![image](https://github.com/user-attachments/assets/7ae9c55a-c791-4c0c-93b9-e1efb37e3c73)
+	- 初始界面：
+
 
  
 ## 六、 总结反思与未来展望
